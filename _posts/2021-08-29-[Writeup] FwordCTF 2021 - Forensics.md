@@ -349,6 +349,51 @@ Vậy là có thêm các tools đã dùng: dirsearch-nmap-wget. Tiếp theo ta �
 
 Flag: `FwordCTF{SBA_192.168.1.9_dirsearch-nmap-wget_secret.txt_663cd2dfc9418f384d90c89a15319b3d}`
 
+## shshsh
+
+Lại là một thử thách về memory forensics.
+
+Tuy nhiên thử thách này lại không có bất kì process hay thông tin gì khả nghi. Nên mình thử kiểm tra biến môi trường.
+
+```bash
+$ python vol.py -f chall.vmem --profile=WinXPSP2x86 envars
+
+....
+
+1552 explorer.exe         0x00010000 k1                             12a45652a154a358452124565487ad0
+1552 explorer.exe         0x00010000 iv                             k1
+1552 explorer.exe         0x00010000 KT                             AES128-CBC
+1552 explorer.exe         0x00010000 LOGONSERVER                    \\CTFCREATORS-DF
+
+....
+```
+
+Chúng ta có key và iv của thuật toán mã hóa AES128-CBC; tuy nhiên lại không có tệp mã hóa.
+
+Đoạn này thì mình cũng mò mãi đến lúc sau thì mới thấy bỏ xót 1 phần quan trọng trong các biến môi trường:
+
+```bash
+1552 explorer.exe         0x00010000 PATHEXT                        .HAK;.COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;
+```
+
+Chỉ duy nhất PATHEXT của explorer là có đuôi mở rộng rất lạ là .HAK; thử tìm xem có bao nhiêu file .HAK nào. 
+
+```bash
+$ python vol.py -f chall.vmem --profile=WinXPSP2x86 filescan | grep -i ".HAK"
+Volatility Foundation Volatility Framework 2.6.1
+0x00000000012403d8      1      0 -W-rw- \Device\HarddiskVolume1\WINDOWS\system32\Handles.HAK
+0x000000000198c0d0      2      2 R--rw- \Device\HarddiskVolume1\WINDOWS\system32\Handles.HAK
+
+$ python vol.py -f chall.vmem --profile=WinXPSP2x86 dumpfiles -Q 0x00000000012403d8 -D .
+
+$ strings file.None.0x8144e990.dat 
+NDgwYjJmMzM4ZjY0N2M3ZTY1MjQwZTc2MjdjYWRhYmFjNWJkNWZjNjllNWQxZDMzM2ZlYjRlMjNjYzNhYjA5NGZlY2E1ODcxMjA5ODJmODExM2U0NTMzNjcxOThmMDU4MWJlZDNhZWMxNTBkMjg1NDIzYWUxMTFiN2I5NDkzNjExZmFjMmNmYmViYjg5NzkzY2U3MThjM2YxZTJkNWNlMjcwMmE5MWNjNDM4NzZhYjJmZGJjZjc0MmRlODg4M2Q2OTIzYjAwYTYyNTMzMGRhOWRiNjljNmFiYmU0ZjIxY2Y5NGJiZmMxMWU2MWJkZDc0NmVjNDU5OGRkNTQ2ZDk2YQo=
+```
+
+Decrypt thôi nào 
+![IMG](/assets/img/blog/fword2021/9-shshsh.JPG)
+
+Flag: `FwordCTF{y0u_CAN_Mak3_u5e_of_4ny_proCesS_with_tHe_ri9ht_apProach}`
 
 Cheer (☞ﾟヮﾟ)☞ ☜(ﾟヮﾟ☜)
 
